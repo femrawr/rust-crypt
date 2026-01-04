@@ -10,6 +10,14 @@ The arguments that can be used to run the encrypter/decrypter with.
 | /master  | The master key for the encryption/decryption.                                   |
 | /folder  | The path to the folder whose contents will be encrypted/decrypted               |
 
+### example:
+```ps1
+.\decrypter.exe /verbose /master "thekey" /folder "C:\Users\user\Desktop\test"
+```
+
+> [!NOTE]
+> You need to surround the value of /master and /folder with double quotes.
+
 ## Technical Info
 Uses Kuznyechik for encryption/decryption and Streebog512 for hashing.
 
