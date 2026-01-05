@@ -18,6 +18,12 @@ The arguments that can be used to run the encrypter/decrypter with.
 > [!NOTE]
 > You need to surround the value of /master and /folder with double quotes.
 
+## Showcase
+https://www.youtube.com/watch?v=1HPKXYrCBqQ
+
+[<img src="https://img.youtube.com/vi/1HPKXYrCBqQ/hqdefault.jpg" width="600" height="300"
+/>](https://www.youtube.com/embed/1HPKXYrCBqQ)
+
 ## Technical Info
 Uses Kuznyechik for encryption/decryption and Streebog512 for hashing.
 
