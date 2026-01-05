@@ -1,11 +1,13 @@
 use rand::{distributions::Alphanumeric, Rng};
 
 pub fn gen_str(len: usize) -> String {
-    rand::thread_rng()
+    let str = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(len)
         .map(char::from)
-        .collect()
+        .collect::<String>();
+
+    hex::encode(str)[..len].to_string()
 }
 
 pub fn get_val(text: &str, key: &str) -> String {
@@ -49,8 +51,4 @@ pub fn get_flag(text: &str, key: &str) -> bool {
     }
 
     false
-}
-
-pub fn get_hex(data: Vec<u8>) -> String {
-    hex::encode(data)
 }

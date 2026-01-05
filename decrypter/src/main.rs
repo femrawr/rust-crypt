@@ -51,7 +51,7 @@ pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
     let suffix = if let Some(pos) = name.rfind(SUFFIX) {
         let suffix = &name[pos + SUFFIX.len()..];
         if suffix.len() != 10 {
-            return Err("unexpected suffix key length");
+            return Err("unexpected file extention suffix length");
         }
 
         suffix
