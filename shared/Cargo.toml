@@ -1,0 +1,16 @@
+[package]
+name = "lib"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+rand = "0.8"
+hex = "0.4"
+ctr = "0.9"
+kuznyechik = "0.8"
+streebog = "0.8"
+cipher = "0.4"
+walkdir = "2"
