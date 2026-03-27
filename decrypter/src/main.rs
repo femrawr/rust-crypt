@@ -3,8 +3,10 @@ use std::path::PathBuf;
 use std::io::{Read, Write};
 use std::fs::{self, File};
 
+use lib::misc::{has_val, get_val};
 use lib::crypto::decrypt;
-use lib::file::delete_file;
+use lib::file::{delete_file, get_files};
+use lib::{KEY_LEN, EXT_LEN};
 
 const SUFFIX: &str = ".rc.";
 const CHUNK: usize = 1 * 1024 * 1024;
@@ -12,16 +14,13 @@ const CHUNK: usize = 1 * 1024 * 1024;
 fn main() {
     let args = env::args()
         .skip(1)
-        .collect::<Vec<String>>()
-        .join(" ");
+        .collect::<Vec<String>>();
 
-    let verbose = lib::misc::get_flag(&args, "verbose");
+    let verbose = has_val(&args, "verbose");
+    let master = get_val(&args, "master");
+    let folder = get_val(&args, "folder");
 
-    let master = lib::misc::get_val(&args, "master");
-
-    let folder = lib::misc::get_val(&args, "folder");
-    let files = lib::file::get_files(folder);
-
+    let files = get_files(folder);
     for file in &files {
         match process_file(file, &master) {
             Ok(_) => {
@@ -37,7 +36,7 @@ fn main() {
                 }
 
                 println!("[!] failed for: {} - {}", file.display(), err);
-            },
+            }
         };
     }
 }
@@ -50,7 +49,7 @@ pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
 
     let suffix = if let Some(pos) = name.rfind(SUFFIX) {
         let suffix = &name[pos + SUFFIX.len()..];
-        if suffix.len() != 10 {
+        if suffix.len() != EXT_LEN {
             return Err("unexpected file extention suffix length");
         }
 
@@ -63,14 +62,14 @@ pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
         .map_err(|_|"failed to read metadata")?;
 
     let file_size = metadata.len() as usize;
-    if file_size < 100 {
+    if file_size < KEY_LEN {
         return Err("file length is less than key length");
     }
 
     let mut enc_file = File::open(file)
         .map_err(|_|"failed to open encrypted file")?;
 
-    let mut read_key = vec![0u8; 100];
+    let mut read_key = vec![0u8; KEY_LEN];
 
     enc_file
         .read_exact(&mut read_key)
@@ -105,7 +104,7 @@ pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
         }
 
         let chunk = &buffer[..bytes];
-        let decrypted = decrypt(&chunk.to_vec(), &full_key);
+        let decrypted = decrypt(chunk, full_key.as_bytes());
 
         dec_file
             .write_all(&decrypted)

